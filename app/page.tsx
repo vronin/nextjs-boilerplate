@@ -80,6 +80,13 @@ export async function aembitGetCredentials(params: {
   port: number;           // target Server Workload port
   credentialType: CredentialType;
 }): Promise<AembitCredentialsResponse> {
+  console.log("Requesting credentials with params:", {
+    baseUrl: params.baseUrl,
+    host: params.host,
+    port: params.port,
+    credentialType: params.credentialType,
+    bearerToken: params.bearerToken ? "****" : "(none)"
+  });
   const { baseUrl, bearerToken, oidcIdentityToken, host, port, credentialType } = params;
 
   const url = new URL("/edge/v1/credentials", baseUrl).toString();
