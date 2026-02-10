@@ -1,10 +1,37 @@
 import Image from "next/image";
+import { getVercelOidcToken } from "@vercel/oidc";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+function decodeJwtPayload(token: string) {
+  const payload = token.split(".")[1];
+  const b64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  const json = Buffer.from(b64 + pad, "base64").toString("utf8");
+  return JSON.parse(json);
+}
 
 export default async function Home() {
-  const res = await fetch("/api/oidc", { cache: "no-store" });
-  const data: { claims: any | null; error?: string } = await res.json();
+  let claims: any = null;
+  let error: string | null = null;
+
+  try {
+    const token = await getVercelOidcToken();
+    const decoded = decodeJwtPayload(token);
+
+    claims = {
+      iss: decoded.iss,
+      sub: decoded.sub,
+      aud: decoded.aud,
+      exp: decoded.exp,
+      iat: decoded.iat,
+      nbf: decoded.nbf,
+      azp: decoded.azp,
+    };
+  } catch (e) {
+    error = (e as Error).message;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
@@ -28,24 +55,21 @@ export default async function Home() {
               Vercel OIDC claims (runtime)
             </div>
 
-            {data.claims ? (
+            {claims ? (
               <pre className="whitespace-pre-wrap break-all text-xs text-zinc-700 dark:text-zinc-300">
-                {JSON.stringify(data.claims, null, 2)}
+                {JSON.stringify(claims, null, 2)}
               </pre>
             ) : (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                No claims available.{" "}
-                {data.error
-                  ? `Error: ${data.error}`
-                  : "Make sure OIDC is enabled in Vercel project settings and you’re running on Vercel."}
+                No claims available. {error ? `Error: ${error}` : ""}
               </p>
             )}
           </div>
         </div>
 
-        {/* ...rest of your existing buttons/links... */}
+        {/* rest of your existing content unchanged */}
         <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          {/* unchanged */}
+          {/* ... */}
         </div>
       </main>
     </div>
