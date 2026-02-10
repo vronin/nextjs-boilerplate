@@ -85,7 +85,7 @@ export async function aembitGetCredentials(params: {
     host: params.host,
     port: params.port,
     credentialType: params.credentialType,
-    bearerToken: params.bearerToken ? "****" : "(none)"
+    bearerToken: params.bearerToken
   });
   const { baseUrl, bearerToken, oidcIdentityToken, host, port, credentialType } = params;
 
