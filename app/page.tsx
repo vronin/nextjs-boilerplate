@@ -174,7 +174,7 @@ export default async function Home() {
 
   try {
     aembitToken = await aembitAuthWithOidc({
-      baseUrl: "https://22a7a6.aembit-eng.com/",
+      baseUrl: "https://22a7a6.ec.qa.aembit-eng.com/",
       clientId: "aembit:qa:22a7a6:identity:oidc_id_token:46939373-cf2b-4095-98c4-03dbcb11ccbf",
       oidcIdentityToken: await getVercelOidcToken(),
     });
@@ -186,7 +186,7 @@ export default async function Home() {
 
   try {
     creds = await aembitGetCredentials({
-      baseUrl: "https://22a7a6.aembit-eng.com/",
+      baseUrl: "https://22a7a6.ec.qa.aembit-eng.com/",
       bearerToken: aembitToken?.accessToken || "",
       oidcIdentityToken: await getVercelOidcToken(), 
       host: "api.example.com",
