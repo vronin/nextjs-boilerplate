@@ -15,7 +15,7 @@ function decodeJwtPayload(token: string) {
 
 export async function GET(req: Request) {
   try {
-    const token = await getVercelOidcToken(req);
+    const token = await getVercelOidcToken();
     const claims = decodeJwtPayload(token);
 
     // Return only a safe subset
