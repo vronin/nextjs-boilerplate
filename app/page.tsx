@@ -64,10 +64,89 @@ export async function aembitAuthWithOidc(params: {
   return (await res.json()) as AembitTokenDTO;
 }
 
+type CredentialType = "ApiKey" | "UsernamePassword" | "OAuthToken" | string;
+
+type AembitCredentialsResponse =
+  | { credentialType: "ApiKey"; expiresAt?: string | null; data: { apiKey: string } }
+  | { credentialType: "UsernamePassword"; expiresAt?: string | null; data: { username: string; password: string } }
+  | { credentialType: "OAuthToken"; expiresAt?: string | null; data: { token: string } }
+  | { credentialType: string; expiresAt?: string | null; data: Record<string, unknown> };
+
+export async function aembitGetCredentials(params: {
+  baseUrl: string;        // e.g. "https://22a7a6.aembit-eng.com/"
+  bearerToken: string;    // accessToken from /edge/v1/auth
+  oidcIdentityToken: string;
+  host: string;           // target Server Workload host
+  port: number;           // target Server Workload port
+  credentialType: CredentialType;
+}): Promise<AembitCredentialsResponse> {
+  const { baseUrl, bearerToken, oidcIdentityToken, host, port, credentialType } = params;
+
+  const url = new URL("/edge/v1/credentials", baseUrl).toString();
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${bearerToken}`,
+    },
+    body: JSON.stringify({
+      client: {
+        oidc: { identityToken: oidcIdentityToken }, // undocumented, but works in your /auth flow
+      },
+      server: {
+        transportProtocol: "TCP",
+        host,
+        port,
+      },
+      credentialType,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Aembit /credentials failed: ${res.status} ${res.statusText}${text ? ` - ${text}` : ""}`);
+  }
+
+  return (await res.json()) as AembitCredentialsResponse;
+}
+
+function extractCredentialValue(creds: any): string | null {
+  if (!creds || typeof creds !== "object") return null;
+  if (!creds.data || typeof creds.data !== "object") return null;
+
+  if ("apiKey" in creds.data) return creds.data.apiKey;
+  if ("token" in creds.data) return creds.data.token;
+
+  return null;
+}
+
+export function maskSecret(
+  value: unknown,
+  options?: { visibleStart?: number; visibleEnd?: number; mask?: string }
+): string | null {
+  if (typeof value !== "string") return null;
+
+  const visibleStart = options?.visibleStart ?? 4;
+  const visibleEnd = options?.visibleEnd ?? 4;
+  const mask = options?.mask ?? "****";
+
+  if (value.length <= visibleStart + visibleEnd) {
+    return value;
+  }
+
+  return (
+    value.slice(0, visibleStart) +
+    mask +
+    value.slice(-visibleEnd)
+  );
+}
+
 export default async function Home() {
   let claims: any = null;
   let error: string | null = null;
   let aembitToken: AembitTokenDTO | null = null;
+  let creds: AembitCredentialsResponse | null = null;
 
   try {
     const token = await getVercelOidcToken();
@@ -96,6 +175,19 @@ export default async function Home() {
     console.log("Received Aembit token:", aembitToken);
   } catch (e) {
     console.error("Aembit auth failed:", (e as Error).message);
+  }
+
+  try {
+    creds = await aembitGetCredentials({
+      baseUrl: "https://22a7a6.aembit-eng.com/",
+      bearerToken: aembitToken?.accessToken || "",
+      oidcIdentityToken: await getVercelOidcToken(), 
+      host: "api.example.com",
+      port: 443,
+      credentialType: "ApiKey",
+    });
+  } catch (e) {
+    console.error("Aembit get credentials failed:", (e as Error).message);
   }
 
   return (
@@ -145,6 +237,31 @@ export default async function Home() {
             </p>
           )}
         </div>
+        </div>
+
+        <div className="w-full max-w-md rounded-lg border border-black/10 p-4 text-left dark:border-white/20">
+          <div className="mb-2 font-semibold text-black dark:text-zinc-50">
+            Credential Preview
+          </div>
+
+          {(() => {
+            const rawValue = extractCredentialValue(creds);
+            const maskedValue = maskSecret(rawValue);
+
+            if (!maskedValue) {
+              return (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  No credentials available.
+                </p>
+              );
+            }
+
+            return (
+              <pre className="whitespace-pre-wrap break-all text-xs text-zinc-700 dark:text-zinc-300">
+                {maskedValue}
+              </pre>
+            );
+          })()}
         </div>
 
         {/* rest of your existing content unchanged */}
