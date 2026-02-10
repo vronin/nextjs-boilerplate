@@ -95,7 +95,7 @@ export async function aembitGetCredentials(params: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${bearerToken}`,
+      "Authorization": `Bearer ${bearerToken}`,
     },
     body: JSON.stringify({
       client: {
