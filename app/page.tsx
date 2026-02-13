@@ -1,5 +1,13 @@
 import Image from "next/image";
 import { getVercelOidcToken } from "@vercel/oidc";
+import {
+  aembitAuthWithOidc,
+  aembitGetCredentials,
+  extractCredentialValue,
+  maskSecret,
+  type AembitTokenDTO,
+  type AembitCredentialsResponse,
+} from "@/lib/aembit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,143 +18,6 @@ function decodeJwtPayload(token: string) {
   const pad = "=".repeat((4 - (b64.length % 4)) % 4);
   const json = Buffer.from(b64 + pad, "base64").toString("utf8");
   return JSON.parse(json);
-}
-
-export type AembitTokenDTO = {
-  accessToken: string;
-  tokenType: string;   // typically "Bearer"
-  expiresIn: number;   // seconds
-};
-
-export type AembitAuthRequest = {
-  clientId: string;
-  client: {
-    // Generic OIDC (seen in the API reference snippet)
-    oidc?: { identityToken: string };
-
-    // Also-supported CI/CD provider-specific attestation shapes
-    github?: { identityToken: string };
-    gitlab?: { identityToken: string };
-    terraform?: { identityToken: string };
-  };
-};
-
-export async function aembitAuthWithOidc(params: {
-  baseUrl: string;          // e.g. "https://<your-edge-api-base-url>"
-  clientId: string;         // Edge Client SDK ID from Trust Provider
-  oidcIdentityToken: string; // your OIDC JWT (starts with "ey...")
-}): Promise<AembitTokenDTO> {
-  const { baseUrl, clientId, oidcIdentityToken } = params;
-
-  const url = new URL("/edge/v1/auth", baseUrl).toString();
-
-  const body: AembitAuthRequest = {
-    clientId,
-    client: {
-      oidc: { identityToken: oidcIdentityToken },
-    },
-  };
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Aembit /auth failed: ${res.status} ${res.statusText}${text ? ` - ${text}` : ""}`);
-  }
-
-  // Response is TokenDTO: { accessToken, tokenType, expiresIn }
-  return (await res.json()) as AembitTokenDTO;
-}
-
-type CredentialType = "ApiKey" | "UsernamePassword" | "OAuthToken" | string;
-
-type AembitCredentialsResponse =
-  | { credentialType: "ApiKey"; expiresAt?: string | null; data: { apiKey: string } }
-  | { credentialType: "UsernamePassword"; expiresAt?: string | null; data: { username: string; password: string } }
-  | { credentialType: "OAuthToken"; expiresAt?: string | null; data: { token: string } }
-  | { credentialType: string; expiresAt?: string | null; data: Record<string, unknown> };
-
-export async function aembitGetCredentials(params: {
-  baseUrl: string;        // e.g. "https://22a7a6.aembit-eng.com/"
-  bearerToken: string;    // accessToken from /edge/v1/auth
-  oidcIdentityToken: string;
-  host: string;           // target Server Workload host
-  port: number;           // target Server Workload port
-  credentialType: CredentialType;
-}): Promise<AembitCredentialsResponse> {
-  console.log("Requesting credentials with params:", {
-    baseUrl: params.baseUrl,
-    host: params.host,
-    port: params.port,
-    credentialType: params.credentialType,
-    bearerToken: params.bearerToken
-  });
-  const { baseUrl, bearerToken, oidcIdentityToken, host, port, credentialType } = params;
-
-  const url = new URL("/edge/v1/credentials", baseUrl).toString();
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${bearerToken}`,
-    },
-    body: JSON.stringify({
-      client: {
-        oidc: { identityToken: oidcIdentityToken }, // undocumented, but works in your /auth flow
-      },
-      server: {
-        transportProtocol: "TCP",
-        host,
-        port,
-      },
-      credentialType,
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Aembit /credentials failed: ${res.status} ${res.statusText}${text ? ` - ${text}` : ""}`);
-  }
-
-  return (await res.json()) as AembitCredentialsResponse;
-}
-
-function extractCredentialValue(creds: any): string | null {
-  if (!creds || typeof creds !== "object") return null;
-  if (!creds.data || typeof creds.data !== "object") return null;
-
-  if ("apiKey" in creds.data) return creds.data.apiKey;
-  if ("token" in creds.data) return creds.data.token;
-
-  return null;
-}
-
-export function maskSecret(
-  value: unknown,
-  options?: { visibleStart?: number; visibleEnd?: number; mask?: string }
-): string | null {
-  if (typeof value !== "string") return null;
-
-  const visibleStart = options?.visibleStart ?? 4;
-  const visibleEnd = options?.visibleEnd ?? 4;
-  const mask = options?.mask ?? "****";
-
-  if (value.length <= visibleStart + visibleEnd) {
-    return value;
-  }
-
-  return (
-    value.slice(0, visibleStart) +
-    mask +
-    value.slice(-visibleEnd)
-  );
 }
 
 export default async function Home() {
@@ -178,7 +49,7 @@ export default async function Home() {
       clientId: "aembit:qa:22a7a6:identity:oidc_id_token:46939373-cf2b-4095-98c4-03dbcb11ccbf",
       oidcIdentityToken: await getVercelOidcToken(),
     });
-    
+
     console.log("Received Aembit token:", aembitToken);
   } catch (e) {
     console.error("Aembit auth failed:", (e as Error).message);
@@ -188,7 +59,7 @@ export default async function Home() {
     creds = await aembitGetCredentials({
       baseUrl: "https://22a7a6.ec.qa.aembit-eng.com/",
       bearerToken: aembitToken?.accessToken || "",
-      oidcIdentityToken: await getVercelOidcToken(), 
+      oidcIdentityToken: await getVercelOidcToken(),
       host: "api.example.com",
       port: 443,
       credentialType: "ApiKey",
