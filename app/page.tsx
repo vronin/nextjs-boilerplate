@@ -4,13 +4,38 @@ import {
   aembitAuthWithOidc,
   aembitGetCredentials,
   extractCredentialValue,
-  maskSecret,
+  CREDENTIAL_TYPE,
   type AembitTokenDTO,
   type AembitCredentialsResponse,
 } from "@/lib/aembit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const DEFAULT_VISIBLE_START = 4;
+const DEFAULT_VISIBLE_END = 4;
+const DEFAULT_MASK = "****";
+
+interface MaskSecretOptions {
+  visibleStart?: number;
+  visibleEnd?: number;
+  mask?: string;
+}
+
+export function maskSecret(value: unknown, options?: MaskSecretOptions): string | null {
+  if (typeof value !== "string") return null;
+
+  const { visibleStart = DEFAULT_VISIBLE_START, visibleEnd = DEFAULT_VISIBLE_END, mask = DEFAULT_MASK } = options ?? {};
+
+  if (value.length <= visibleStart + visibleEnd) {
+    return mask;
+  }
+
+  const prefix = value.slice(0, visibleStart);
+  const suffix = visibleEnd > 0 ? value.slice(-visibleEnd) : "";
+  return prefix + mask + suffix;
+}
+
 
 function decodeJwtPayload(token: string) {
   const payload = token.split(".")[1];
@@ -50,22 +75,24 @@ export default async function Home() {
       oidcIdentityToken: await getVercelOidcToken(),
     });
 
-    console.log("Received Aembit token:", aembitToken);
+    console.log("Received Aembit token, expires in:", aembitToken.expiresIn, "seconds");
   } catch (e) {
     console.error("Aembit auth failed:", (e as Error).message);
   }
 
-  try {
-    creds = await aembitGetCredentials({
-      baseUrl: "https://22a7a6.ec.qa.aembit-eng.com/",
-      bearerToken: aembitToken?.accessToken || "",
-      oidcIdentityToken: await getVercelOidcToken(),
-      host: "api.example.com",
-      port: 443,
-      credentialType: "ApiKey",
-    });
-  } catch (e) {
-    console.error("Aembit get credentials failed:", (e as Error).message);
+  if (aembitToken) {
+    try {
+      creds = await aembitGetCredentials({
+        baseUrl: "https://22a7a6.ec.qa.aembit-eng.com/",
+        bearerToken: aembitToken.accessToken,
+        oidcIdentityToken: await getVercelOidcToken(),
+        host: "api.example.com",
+        port: 443,
+        credentialType: CREDENTIAL_TYPE.API_KEY,
+      });
+    } catch (e) {
+      console.error("Aembit get credentials failed:", (e as Error).message);
+    }
   }
 
   return (
