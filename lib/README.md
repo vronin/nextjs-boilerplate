@@ -49,3 +49,10 @@ The Aembit token lifetime is in `aembitToken.expiresIn` (seconds from issuance).
 ## Error handling
 
 Both API functions throw `AembitApiError` on non-2xx responses (with `.status`, `.statusText`, `.responseBody`) and plain `Error` on network/timeout failures. Default timeout is 30s, configurable via `timeoutMs`.
+
+## Retries
+
+The SDK does not retry on failure — it fails fast and lets the caller decide. Depending on your context:
+
+- **User-facing request or serverless with a tight timeout?** A single attempt with a short `timeoutMs` is usually fine. Failing quickly is better than making the user wait.
+- **Background job or startup-time credential fetch?** Wrapping the call in exponential backoff (e.g. 3 retries, 1s/2s/4s delays) can help ride out transient network issues. Only retry on 5xx or network errors — a 401/403 won't resolve itself.
