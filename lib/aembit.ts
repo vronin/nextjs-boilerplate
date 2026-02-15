@@ -51,26 +51,6 @@ export interface AembitGetCredentialsParams {
   timeoutMs?: number;
 }
 
-// --- Errors ---
-
-/**
- * Error thrown when the Aembit API returns a non-2xx HTTP response.
- * The response body is available via `.responseBody` for debugging.
- */
-export class AembitApiError extends Error {
-  readonly status: number;
-  readonly statusText: string;
-  readonly responseBody: string;
-
-  constructor(endpoint: string, status: number, statusText: string, responseBody: string) {
-    super(`Aembit ${endpoint} failed: ${status} ${statusText}`);
-    this.name = "AembitApiError";
-    this.status = status;
-    this.statusText = statusText;
-    this.responseBody = responseBody;
-  }
-}
-
 // --- Validation ---
 
 function isAembitAuthResponse(obj: unknown): obj is AembitAuthResponse {
@@ -139,7 +119,7 @@ async function parseJsonResponse<T>(res: Response, endpoint: string, guard: (obj
 /**
  * Authenticates with the Aembit Edge API using an OIDC identity token.
  *
- * @throws {AembitApiError} If the API returns a non-2xx response
+ * @throws {Error} On network, timeout, or non-2xx response
  */
 export async function aembitAuthWithOidc(params: AembitAuthParams): Promise<AembitAuthResponse> {
   const { baseUrl, clientId, oidcIdentityToken, timeoutMs = DEFAULT_TIMEOUT_MS } = params;
@@ -162,8 +142,8 @@ export async function aembitAuthWithOidc(params: AembitAuthParams): Promise<Aemb
   );
 
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new AembitApiError(AUTH_ENDPOINT, res.status, res.statusText, body);
+    const errorBody = await res.text().catch(() => "");
+    throw new Error(`Aembit ${AUTH_ENDPOINT} failed: ${res.status} ${res.statusText} ${errorBody}`.trim());
   }
 
   return parseJsonResponse(res, AUTH_ENDPOINT, isAembitAuthResponse);
@@ -172,7 +152,7 @@ export async function aembitAuthWithOidc(params: AembitAuthParams): Promise<Aemb
 /**
  * Retrieves credentials from the Aembit Edge API for a target server workload.
  *
- * @throws {AembitApiError} If the API returns a non-2xx response
+ * @throws {Error} On network, timeout, or non-2xx response
  */
 export async function aembitGetCredentials(params: AembitGetCredentialsParams): Promise<AembitCredentialsResponse> {
   const { baseUrl, bearerToken, oidcIdentityToken, host, port, credentialType, transportProtocol = "TCP", timeoutMs = DEFAULT_TIMEOUT_MS } = params;
@@ -200,8 +180,8 @@ export async function aembitGetCredentials(params: AembitGetCredentialsParams): 
   );
 
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new AembitApiError(CREDENTIALS_ENDPOINT, res.status, res.statusText, body);
+    const errorBody = await res.text().catch(() => "");
+    throw new Error(`Aembit ${CREDENTIALS_ENDPOINT} failed: ${res.status} ${res.statusText} ${errorBody}`.trim());
   }
 
   return parseJsonResponse(res, CREDENTIALS_ENDPOINT, isAembitCredentialsResponse);
