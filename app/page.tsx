@@ -88,7 +88,7 @@ export default async function Home() {
         oidcIdentityToken: await getVercelOidcToken(),
         host: "api.example.com",
         port: 443,
-        credentialType: CREDENTIAL_TYPE.API_KEY,
+        credentialType: CREDENTIAL_TYPE.OAUTH_TOKEN,
       });
     } catch (e) {
       console.error("Aembit get credentials failed:", (e as Error).message);

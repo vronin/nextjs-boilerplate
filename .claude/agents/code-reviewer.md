@@ -86,6 +86,10 @@ Note 2-3 things done well (if applicable).
 ### Summary
 A table or list of findings by severity count, plus an overall recommendation (Approve / Approve with minor changes / Request changes).
 
+## Pragmatism (Default Stance)
+
+Favor compact, readable code that handles realistic scenarios over exhaustively defensive code. Don't recommend runtime checks that duplicate TypeScript types or server-side validation. Don't recommend extracting constants used only once or wrapping single expressions in helper functions. Every line of defensive code should earn its keep — flag unnecessary complexity as a negative, not a positive. If a user explicitly requests hardening, provide it.
+
 ## Important Guidelines
 
 - **Review only the recently written or modified code** unless explicitly asked to review the entire codebase.
