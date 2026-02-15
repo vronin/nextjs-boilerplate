@@ -19,7 +19,7 @@ export interface AembitAuthRequest {
   };
 }
 
-export interface AembitTokenDTO {
+export interface AembitAuthResponse {
   accessToken: string;
   tokenType: string;
   expiresIn: number;
@@ -27,8 +27,11 @@ export interface AembitTokenDTO {
 
 export type CredentialType = typeof CREDENTIAL_TYPE[keyof typeof CREDENTIAL_TYPE];
 
-export type AembitCredentialsResponse =
-  { credentialType: typeof CREDENTIAL_TYPE.OAUTH_TOKEN; expiresAt?: string | null; data: { token: string } };
+export interface AembitCredentialsResponse {
+  credentialType: typeof CREDENTIAL_TYPE.OAUTH_TOKEN;
+  expiresAt?: string | null;
+  data: { token: string };
+}
 
 export interface AembitAuthParams {
   baseUrl: string;
@@ -70,7 +73,7 @@ export class AembitApiError extends Error {
 
 // --- Validation ---
 
-function isAembitTokenDTO(obj: unknown): obj is AembitTokenDTO {
+function isAembitAuthResponse(obj: unknown): obj is AembitAuthResponse {
   if (typeof obj !== "object" || obj === null) return false;
   const o = obj as Record<string, unknown>;
   return (
@@ -138,7 +141,7 @@ async function parseJsonResponse<T>(res: Response, endpoint: string, guard: (obj
  *
  * @throws {AembitApiError} If the API returns a non-2xx response
  */
-export async function aembitAuthWithOidc(params: AembitAuthParams): Promise<AembitTokenDTO> {
+export async function aembitAuthWithOidc(params: AembitAuthParams): Promise<AembitAuthResponse> {
   const { baseUrl, clientId, oidcIdentityToken, timeoutMs = DEFAULT_TIMEOUT_MS } = params;
 
   const url = new URL(AUTH_ENDPOINT, baseUrl).toString();
@@ -163,7 +166,7 @@ export async function aembitAuthWithOidc(params: AembitAuthParams): Promise<Aemb
     throw new AembitApiError(AUTH_ENDPOINT, res.status, res.statusText, body);
   }
 
-  return parseJsonResponse(res, AUTH_ENDPOINT, isAembitTokenDTO);
+  return parseJsonResponse(res, AUTH_ENDPOINT, isAembitAuthResponse);
 }
 
 /**

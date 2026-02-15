@@ -5,7 +5,7 @@ import {
   aembitGetCredentials,
   extractCredentialValue,
   CREDENTIAL_TYPE,
-  type AembitTokenDTO,
+  type AembitAuthResponse,
   type AembitCredentialsResponse,
 } from "@/lib/aembit";
 
@@ -48,7 +48,7 @@ function decodeJwtPayload(token: string) {
 export default async function Home() {
   let claims: any = null;
   let error: string | null = null;
-  let aembitToken: AembitTokenDTO | null = null;
+  let aembitToken: AembitAuthResponse | null = null;
   let creds: AembitCredentialsResponse | null = null;
 
   try {
