@@ -48,7 +48,7 @@ The Aembit token lifetime is in `aembitToken.expiresIn` (seconds from issuance).
 
 ## Error handling
 
-Both API functions throw `Error` on any failure (network, timeout, non-2xx response, unexpected response shape). The error message includes the endpoint, status code, and response body when available. Default timeout is 30s, configurable via `timeoutMs`.
+Both API functions throw `Error` on any failure (network, timeout, non-2xx response, unexpected response shape). The error message includes the endpoint, status code, and response body when available. Default timeout is 3s, configurable via the `timeoutMs` parameter on both `aembitAuthWithOidc` and `aembitGetCredentials`.
 
 ## Retries
 
