@@ -1,6 +1,6 @@
 const AUTH_ENDPOINT = "/edge/v1/auth";
 const CREDENTIALS_ENDPOINT = "/edge/v1/credentials";
-const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 3_000;
 
 // --- Types ---
 
@@ -131,15 +131,6 @@ async function parseJsonResponse<T>(res: Response, endpoint: string, guard: (obj
   return data;
 }
 
-async function readErrorBody(res: Response): Promise<string> {
-  try {
-    const text = await res.text();
-    return text.length > 10_000 ? text.slice(0, 10_000) + "... (truncated)" : text;
-  } catch (err) {
-    return `(failed to read response body: ${err instanceof Error ? err.message : String(err)})`;
-  }
-}
-
 // --- Public API ---
 
 /**
@@ -168,8 +159,8 @@ export async function aembitAuthWithOidc(params: AembitAuthParams): Promise<Aemb
   );
 
   if (!res.ok) {
-    const text = await readErrorBody(res);
-    throw new AembitApiError(AUTH_ENDPOINT, res.status, res.statusText, text);
+    const body = await res.text().catch(() => "");
+    throw new AembitApiError(AUTH_ENDPOINT, res.status, res.statusText, body);
   }
 
   return parseJsonResponse(res, AUTH_ENDPOINT, isAembitTokenDTO);
@@ -206,8 +197,8 @@ export async function aembitGetCredentials(params: AembitGetCredentialsParams): 
   );
 
   if (!res.ok) {
-    const text = await readErrorBody(res);
-    throw new AembitApiError(CREDENTIALS_ENDPOINT, res.status, res.statusText, text);
+    const body = await res.text().catch(() => "");
+    throw new AembitApiError(CREDENTIALS_ENDPOINT, res.status, res.statusText, body);
   }
 
   return parseJsonResponse(res, CREDENTIALS_ENDPOINT, isAembitCredentialsResponse);
