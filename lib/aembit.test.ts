@@ -21,7 +21,7 @@ describe("aembit Edge API wrapper", () => {
 
     // Act
     const result = await aembitAuthWithOidc({
-      baseUrl: "https://edge.aembit.io",
+      baseUrl: "https://tenant1.ec.aembit.io",
       clientId: "client-1",
       oidcIdentityToken: "oidc-token",
     });
@@ -33,12 +33,12 @@ describe("aembit Edge API wrapper", () => {
   it("aembitGetCredentials returns parsed credential on success", async () => {
     // Arrange
     (globalThis.fetch as unknown as ReturnType<typeof mock.fn>).mock.mockImplementation(async () =>
-      Response.json({ credentialType: "OAuthToken", data: { token: "oauth-abc" }, expiresAt: null }),
+      Response.json({ credentialType: "OAuthToken", data: { token: "oauth-abc" }, expiresAt: "2026-03-01T12:00:00Z" }),
     );
 
     // Act
     const result = await aembitGetCredentials({
-      baseUrl: "https://edge.aembit.io",
+      baseUrl: "https://tenant1.ec.aembit.io",
       bearerToken: "bearer-xyz",
       oidcIdentityToken: "oidc-token",
       host: "api.example.com",
@@ -49,6 +49,7 @@ describe("aembit Edge API wrapper", () => {
     // Assert
     assert.equal(result.credentialType, CREDENTIAL_TYPE.OAUTH_TOKEN);
     assert.equal(result.data.token, "oauth-abc");
+    assert.equal(result.expiresAt, "2026-03-01T12:00:00Z");
   });
 
   it("throws on non-2xx status with status code in message", async () => {
@@ -62,7 +63,7 @@ describe("aembit Edge API wrapper", () => {
 
     // Act & Assert
     await assert.rejects(
-      () => aembitAuthWithOidc({ baseUrl: "https://edge.aembit.io", clientId: "x", oidcIdentityToken: "y" }),
+      () => aembitAuthWithOidc({ baseUrl: "https://tenant1.ec.aembit.io", clientId: "x", oidcIdentityToken: "y" }),
       (err: Error) => {
         assert.match(err.message, /401/);
         assert.match(err.message, /Unauthorized/);
@@ -87,7 +88,7 @@ describe("aembit Edge API wrapper", () => {
 
     // Act & Assert
     await assert.rejects(
-      () => aembitAuthWithOidc({ baseUrl: "https://edge.aembit.io", clientId: "x", oidcIdentityToken: "y", timeoutMs: 10 }),
+      () => aembitAuthWithOidc({ baseUrl: "https://tenant1.ec.aembit.io", clientId: "x", oidcIdentityToken: "y", timeoutMs: 10 }),
       (err: Error) => {
         assert.match(err.message, /timed out after 10ms/);
         return true;
@@ -97,16 +98,13 @@ describe("aembit Edge API wrapper", () => {
 
   it("throws on malformed JSON response", async () => {
     // Arrange
-    (globalThis.fetch as unknown as ReturnType<typeof mock.fn>).mock.mockImplementation(async () => ({
-      ok: true,
-      json: async () => {
-        throw new Error("Unexpected token");
-      },
-    }));
+    (globalThis.fetch as unknown as ReturnType<typeof mock.fn>).mock.mockImplementation(async () =>
+      new Response("not json at all", { status: 200, headers: { "Content-Type": "text/plain" } }),
+    );
 
     // Act & Assert
     await assert.rejects(
-      () => aembitAuthWithOidc({ baseUrl: "https://edge.aembit.io", clientId: "x", oidcIdentityToken: "y" }),
+      () => aembitAuthWithOidc({ baseUrl: "https://tenant1.ec.aembit.io", clientId: "x", oidcIdentityToken: "y" }),
       (err: Error) => {
         assert.match(err.message, /Failed to parse JSON/);
         return true;
@@ -135,7 +133,7 @@ describe("aembit Edge API wrapper", () => {
 
     // Act & Assert
     await assert.rejects(
-      () => aembitAuthWithOidc({ baseUrl: "https://edge.aembit.io", clientId: "x", oidcIdentityToken: "y" }),
+      () => aembitAuthWithOidc({ baseUrl: "https://tenant1.ec.aembit.io", clientId: "x", oidcIdentityToken: "y" }),
       (err: Error) => {
         assert.match(err.message, /Unexpected response shape/);
         return true;
@@ -154,12 +152,12 @@ describe("aembit Edge API wrapper", () => {
 
     // Act
     const auth = await aembitAuthWithOidc({
-      baseUrl: "https://edge.aembit.io",
+      baseUrl: "https://tenant1.ec.aembit.io",
       clientId: "client-1",
       oidcIdentityToken: "oidc-token",
     });
     const creds = await aembitGetCredentials({
-      baseUrl: "https://edge.aembit.io",
+      baseUrl: "https://tenant1.ec.aembit.io",
       bearerToken: auth.accessToken,
       oidcIdentityToken: "oidc-token",
       host: "api.example.com",
