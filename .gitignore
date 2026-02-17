@@ -39,3 +39,23 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Crash logs
+crash.log
+
+# Sensitive variable files
+*.tfvars
+*.tfvars.json
+
+# Terraform CLI config files
+.terraformrc
+terraform.rc
+
+# Terraform lock
+.terraform.lock.hcl
+
+.terraform/

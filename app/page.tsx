@@ -71,7 +71,7 @@ export default async function Home() {
   try {
     aembitToken = await aembitAuthWithOidc({
       baseUrl: "https://22a7a6.ec.qa.aembit-eng.com/",
-      clientId: "aembit:qa:22a7a6:identity:oidc_id_token:46939373-cf2b-4095-98c4-03dbcb11ccbf",
+      clientId: "aembit:qa:22a7a6:identity:oidc_id_token:988d2e0c-aad2-4d89-8dd5-69cd0b5f741a",
       oidcIdentityToken: await getVercelOidcToken(),
     });
 
